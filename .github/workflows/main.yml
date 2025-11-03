@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2' # <-- التعديل النهائي
-          channel: 'stable'         # <-- التعديل النهائي
+          flutter-version: '3.19.6' # <-- إصدار مستقر ومضمون
+          channel: 'stable'
 
       - name: Get dependencies
         run: flutter pub get
