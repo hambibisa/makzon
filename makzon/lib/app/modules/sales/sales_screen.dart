@@ -2,26 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-// تأكد من أن هذه المسارات صحيحة لمشروعك
-import '../models/product_model.dart';
-import '../models/client_model.dart';
-import '../models/sale_model.dart';
+import '../products/product_model.dart';
+import '../clients/client_model.dart';
+import 'sale_model.dart';
 
-// لقد قمت بتعريف SaleItem هنا لأنه لم يكن موجودًا في الكود الذي أرسلته
-// إذا كان موجودًا في ملف آخر، يمكنك حذف هذا الجزء واستيراد الملف الصحيح
 class SaleItem {
   final Product product;
   int quantity;
-
   SaleItem({required this.product, this.quantity = 1});
-
-  // لقد غيرت اسم السعر هنا ليتوافق مع نموذج المنتج الخاص بك
-  double get totalPrice => product.salePrice * quantity;
+  // تم التصحيح هنا لاستخدام 'price'
+  double get totalPrice => product.price * quantity;
 }
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
-
   @override
   State<SalesScreen> createState() => _SalesScreenState();
 }
@@ -30,9 +24,9 @@ class _SalesScreenState extends State<SalesScreen> {
   final List<SaleItem> _saleItems = [];
   final TextEditingController _typeAheadController = TextEditingController();
   final Uuid _uuid = Uuid();
-  Client? _selectedClient; // تم تغيير هذا ليكون متغيرًا عامًا لتسهيل الوصول إليه
+  Client? _selectedClient;
 
-  // --- دالة البيع الموحدة والمحسنة ---
+  // --- الدالة المُصححة بالكامل ---
   void _processSale({required bool isCreditSale}) async {
     if (_saleItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,12 +35,9 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
-    // الخطوة 1: التعامل مع البيع الآجل واختيار العميل
     if (isCreditSale) {
-      // استخدام مربع حوار لاختيار العميل
       final Client? client = await _showClientSelectionDialog();
       if (client == null) {
-        // إذا لم يختر المستخدم عميلاً، نوقف العملية
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم إلغاء البيع الآجل لعدم اختيار عميل.')),
         );
@@ -55,31 +46,25 @@ class _SalesScreenState extends State<SalesScreen> {
       _selectedClient = client;
     }
 
-    // إذا استمرت العملية، نتأكد أن الواجهة لا تزال موجودة
     if (!mounted) return;
 
-    // الخطوة 2: حساب إجمالي الفاتورة
     final double totalAmount = _totalBill;
-
-    // الخطوة 3: فتح صناديق قاعدة البيانات
     final salesBox = Hive.box<Sale>('sales');
     final productsBox = Hive.box<Product>('products');
 
-    // الخطوة 4: إنشاء سجل بيع جديد
-    final newSale = Sale(
-      id: _uuid.v4(),
-      // استخدام saleItems لإنشاء القوائم المطلوبة في نموذج Sale
-      items: _saleItems.map((item) => SaleItemDb(productId: item.product.id, quantity: item.quantity, price: item.product.salePrice)).toList(),
-      totalAmount: totalAmount,
-      paymentType: isCreditSale ? PaymentType.credit : PaymentType.cash,
-      date: DateTime.now(),
-      clientId: _selectedClient?.id, // حفظ هوية العميل فقط في البيع الآجل
-    );
+    final newSale = Sale()
+      ..id = _uuid.v4()
+      ..productIds = _saleItems.map((item) => item.product.id).toList()
+      ..quantities = _saleItems.map((item) => item.quantity).toList()
+      ..prices = _saleItems.map((item) => item.product.price).toList() // تصحيح
+      ..totalAmount = totalAmount
+      ..saleDate = DateTime.now()
+      ..isCredit = isCreditSale
+      ..clientId = _selectedClient?.id;
+
     await salesBox.add(newSale);
 
-    // الخطوة 5: تحديث كميات المنتجات في المخزون
     for (var item in _saleItems) {
-      // البحث عن المنتج باستخدام مفتاحه لضمان التحديث الصحيح
       final product = productsBox.get(item.product.key);
       if (product != null) {
         product.quantity -= item.quantity;
@@ -87,24 +72,21 @@ class _SalesScreenState extends State<SalesScreen> {
       }
     }
 
-    // الخطوة 6: تحديث دين العميل (الإصلاح الرئيسي هنا)
     if (isCreditSale && _selectedClient != null) {
-      _selectedClient!.debt += totalAmount;
+      _selectedClient!.debt += totalAmount; // تصحيح
       await _selectedClient!.save();
     }
 
-    // الخطوة 7: إظهار رسالة نجاح ومسح الواجهة
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تمت عملية البيع بنجاح!')),
     );
 
     setState(() {
-      _saleItems.clear(); // مسح سلة المشتريات
-      _selectedClient = null; // إعادة تعيين العميل المختار
-      _typeAheadController.clear(); // مسح حقل البحث
+      _saleItems.clear();
+      _selectedClient = null;
+      _typeAheadController.clear();
     });
   }
-
 
   Future<Client?> _showClientSelectionDialog() async {
     final clientsBox = Hive.box<Client>('clients');
@@ -143,10 +125,8 @@ class _SalesScreenState extends State<SalesScreen> {
 
   void _addProductToSale(Product product) {
     setState(() {
-      // التحقق إذا كان المنتج موجودًا بالفعل في السلة
       for (var item in _saleItems) {
         if (item.product.id == product.id) {
-          // التحقق من الكمية المتاحة في المخزون
           if (item.quantity < product.quantity) {
             item.quantity++;
           } else {
@@ -154,11 +134,9 @@ class _SalesScreenState extends State<SalesScreen> {
                 content: Text('الكمية المطلوبة غير متوفرة في المخزون')));
           }
           _typeAheadController.clear();
-          return; // الخروج من الدالة بعد زيادة الكمية
+          return;
         }
       }
-
-      // إذا لم يكن المنتج في السلة، قم بإضافته
       if (product.quantity > 0) {
         _saleItems.add(SaleItem(product: product));
       } else {
@@ -205,7 +183,6 @@ class _SalesScreenState extends State<SalesScreen> {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
-                  autofocus: false,
                   decoration: const InputDecoration(
                     labelText: 'ابحث بالباركود أو اسم المنتج',
                     prefixIcon: Icon(Icons.search),
@@ -216,8 +193,9 @@ class _SalesScreenState extends State<SalesScreen> {
               itemBuilder: (context, Product suggestion) {
                 return ListTile(
                   title: Text(suggestion.name),
+                  // تم التصحيح هنا
                   subtitle: Text(
-                      'السعر: ${suggestion.salePrice} ريال | الكمية: ${suggestion.quantity}'),
+                      'السعر: ${suggestion.price} ريال | الكمية: ${suggestion.quantity}'),
                 );
               },
               onSelected: (Product suggestion) {
@@ -246,7 +224,8 @@ class _SalesScreenState extends State<SalesScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           child: ListTile(
                             title: Text(item.product.name),
-                            subtitle: Text('السعر: ${item.product.salePrice} ريال'),
+                            // تم التصحيح هنا
+                            subtitle: Text('السعر: ${item.product.price} ريال'),
                             leading: IconButton(
                                 icon: const Icon(Icons.delete_outline,
                                     color: Colors.red),
