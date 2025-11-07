@@ -8,7 +8,7 @@ part of 'client_model.dart';
 
 class ClientAdapter extends TypeAdapter<Client> {
   @override
-  final int typeId = 1;
+  final int typeId = 2;
 
   @override
   Client read(BinaryReader reader) {
@@ -16,28 +16,26 @@ class ClientAdapter extends TypeAdapter<Client> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Client()
+    return Client(
+      name: fields[1] as String,
+      phone: fields[3] as String,
+    )
       ..id = fields[0] as String
-      ..name = fields[1] as String
-      ..phone = fields[2] as String?
-      ..address = fields[3] as String?
-      ..totalDebt = fields[4] as double;
+      ..debt = fields[2] as double;
   }
 
   @override
   void write(BinaryWriter writer, Client obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.phone)
+      ..write(obj.debt)
       ..writeByte(3)
-      ..write(obj.address)
-      ..writeByte(4)
-      ..write(obj.totalDebt);
+      ..write(obj.phone);
   }
 
   @override

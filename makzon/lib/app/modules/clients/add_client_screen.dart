@@ -1,94 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
 import 'client_model.dart';
 
 class AddClientScreen extends StatefulWidget {
-  const AddClientScreen({super.key});
+    const AddClientScreen({super.key});
 
-    @override
-      State<AddClientScreen> createState() => _AddClientScreenState();
-      }
+      @override
+        State<AddClientScreen> createState() => _AddClientScreenState();
+}
 
-      class _AddClientScreenState extends State<AddClientScreen> {
-        final _formKey = GlobalKey<FormState>();
-          final _nameController = TextEditingController();
-            final _phoneController = TextEditingController();
-              final _addressController = TextEditingController();
-                final _uuid = Uuid();
+class _AddClientScreenState extends State<AddClientScreen> {
+    final _formKey = GlobalKey<FormState>();
+      final _nameController = TextEditingController();
+        final _phoneController = TextEditingController();
 
-                  @override
-                    void dispose() {
-                        _nameController.dispose();
-                            _phoneController.dispose();
-                                _addressController.dispose();
-                                    super.dispose();
-                                      }
+          void _saveClient() {
+                if (_formKey.currentState!.validate()) {
+                        final client = Client(
+                                  name: _nameController.text,
+                                          phone: _phoneController.text,
+                        );
+                              Hive.box<Client>('clients').add(client);
+                                    Navigator.of(context).pop();
+                }
+          }
 
-                                        Future<void> _saveClient() async {
-                                            if (_formKey.currentState!.validate()) {
-                                                  final newClient = Client()
-                                                          ..id = _uuid.v4()
-                                                                  ..name = _nameController.text
-                                                                          ..phone = _phoneController.text
-                                                                                  ..address = _addressController.text
-                                                                                          ..totalDebt = 0.0; // الدين يبدأ من صفر
+            @override
+              Widget build(BuildContext context) {
+                    return Scaffold(
+                            appBar: AppBar(
+                                      title: const Text('إضافة عميل جديد'),
+                            ),
+                                  body: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                                    child: Form(
+                                                                key: _formKey,
+                                                                          child: Column(
+                                                                                        children: [
+                                                                                                        TextFormField(
+                                                                                                                          controller: _nameController,
+                                                                                                                                          decoration: const InputDecoration(labelText: 'اسم العميل'),
+                                                                                                                                                          validator: (value) =>
+                                                                                                                                                                              value!.isEmpty ? 'الرجاء إدخال الاسم' : null,
+                                                                                                        ),
+                                                                                                                      const SizedBox(height: 16),
+                                                                                                                                    TextFormField(
+                                                                                                                                                      controller: _phoneController,
+                                                                                                                                                                      decoration: const InputDecoration(labelText: 'رقم الهاتف'),
+                                                                                                                                                                                      keyboardType: TextInputType.phone,
+                                                                                                                                                                                                      validator: (value) =>
+                                                                                                                                                                                                                          value!.isEmpty ? 'الرجاء إدخال رقم الهاتف' : null,
+                                                                                                                                    ),
+                                                                                                                                                  const SizedBox(height: 32),
+                                                                                                                                                                ElevatedButton(
+                                                                                                                                                                                  onPressed: _saveClient,
+                                                                                                                                                                                                  child: const Text('حفظ العميل'),
+                                                                                                                                                                ),
+                                                                                        ],
+                                                                          ),
+                                                    ),
+                                  ),
+                    );
+              }
+}
 
-                                                                                                final box = Hive.box<Client>('clients');
-                                                                                                      await box.add(newClient);
-
-                                                                                                            if (mounted) {
-                                                                                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                                                                                              const SnackBar(content: Text('تم حفظ العميل بنجاح!')),
-                                                                                                                                      );
-                                                                                                                                              Navigator.of(context).pop();
-                                                                                                                                                    }
-                                                                                                                                                        }
-                                                                                                                                                          }
-
-                                                                                                                                                            @override
-                                                                                                                                                              Widget build(BuildContext context) {
-                                                                                                                                                                  return Scaffold(
-                                                                                                                                                                        appBar: AppBar(title: const Text('إضافة عميل جديد')),
-                                                                                                                                                                              body: SingleChildScrollView(
-                                                                                                                                                                                      padding: const EdgeInsets.all(16.0),
-                                                                                                                                                                                              child: Form(
-                                                                                                                                                                                                        key: _formKey,
-                                                                                                                                                                                                                  child: Column(
-                                                                                                                                                                                                                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                                                                                                                                                                                                          children: [
-                                                                                                                                                                                                                                                        TextFormField(
-                                                                                                                                                                                                                                                                        controller: _nameController,
-                                                                                                                                                                                                                                                                                        decoration: const InputDecoration(labelText: 'اسم العميل', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
-                                                                                                                                                                                                                                                                                                        validator: (value) => (value == null || value.isEmpty) ? 'الرجاء إدخال اسم العميل' : null,
-                                                                                                                                                                                                                                                                                                                      ),
-                                                                                                                                                                                                                                                                                                                                    const SizedBox(height: 16),
-                                                                                                                                                                                                                                                                                                                                                  TextFormField(
-                                                                                                                                                                                                                                                                                                                                                                  controller: _phoneController,
-                                                                                                                                                                                                                                                                                                                                                                                  decoration: const InputDecoration(labelText: 'رقم الهاتف (اختياري)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)),
-                                                                                                                                                                                                                                                                                                                                                                                                  keyboardType: TextInputType.phone,
-                                                                                                                                                                                                                                                                                                                                                                                                                ),
-                                                                                                                                                                                                                                                                                                                                                                                                                              const SizedBox(height: 16),
-                                                                                                                                                                                                                                                                                                                                                                                                                                            TextFormField(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            controller: _addressController,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            decoration: const InputDecoration(labelText: 'العنوان (اختياري)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.location_on)),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        const SizedBox(height: 32),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ElevatedButton.icon(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      onPressed: _saveClient,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      icon: const Icon(Icons.save, color: Colors.white),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      label: const Text('حفظ العميل', style: TextStyle(color: Colors.white)),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      style: ElevatedButton.styleFrom(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        backgroundColor: Colors.green,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          padding: const EdgeInsets.symmetric(vertical: 16),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            textStyle: const TextStyle(fontSize: 18, fontFamily: 'Cairo'),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+                                                                  
